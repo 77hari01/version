@@ -4,6 +4,7 @@ const mysql = require("mysql2/promise");
 const cors = require("cors");
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
@@ -16,30 +17,33 @@ const escapeHtml = (value) =>
     .replace(/'/g, "&#39;");
 
 const dbConfig = {
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "IMS",
-  port: Number(process.env.DB_PORT || 3306)
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: Number(process.env.MYSQLPORT)
 };
 
+// Health check
 app.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: "Server is running"
+    message: "Railway server is running"
   });
 });
 
-// Home page - check version history in browser
+// Home page
 app.get("/", async (req, res) => {
+
   try {
+
     const connection = await mysql.createConnection(dbConfig);
 
-    const [rows] = await connection.execute(
-      `SELECT *
-       FROM AppVersionHistory
-       ORDER BY Id DESC`
-    );
+    const [rows] = await connection.execute(`
+      SELECT *
+      FROM AppVersionHistory
+      ORDER BY Id DESC
+    `);
 
     await connection.end();
 
@@ -55,51 +59,104 @@ app.get("/", async (req, res) => {
     `).join("");
 
     res.send(`
-      <h1>App Version History</h1>
-      <p>
-        <a href="/all-versions">All versions JSON</a>
-      </p>
-      <table border="1" cellpadding="10" cellspacing="0">
-        <tr>
-          <th>ID</th>
-          <th>App Name</th>
-          <th>Version No</th>
-          <th>Updated By</th>
-          <th>Updated Email</th>
-          <th>Updated At</th>
-        </tr>
-        ${tableRows || '<tr><td colspan="6">No version records found</td></tr>'}
-      </table>
+      <html>
+      <head>
+        <title>IMS Version History</title>
+
+        <style>
+          body{
+            font-family:Arial;
+            padding:20px;
+            background:#f4f6f8;
+          }
+
+          table{
+            width:100%;
+            border-collapse:collapse;
+            background:white;
+          }
+
+          th,td{
+            border:1px solid #ddd;
+            padding:10px;
+          }
+
+          th{
+            background:#1f3c88;
+            color:white;
+          }
+        </style>
+
+      </head>
+
+      <body>
+
+        <h1>IMS App Version History</h1>
+
+        <p>
+          <a href="/all-versions">View JSON Data</a>
+        </p>
+
+        <table>
+
+          <tr>
+            <th>ID</th>
+            <th>App Name</th>
+            <th>Version</th>
+            <th>Updated By</th>
+            <th>Email</th>
+            <th>Updated At</th>
+          </tr>
+
+          ${tableRows || `
+            <tr>
+              <td colspan="6">No Records Found</td>
+            </tr>
+          `}
+
+        </table>
+
+      </body>
+      </html>
     `);
 
   } catch (error) {
+
     res.status(500).json({
       success: false,
       error: error.message
     });
+
   }
+
 });
 
-// Save version record
+// Save version
 app.get("/save-version", async (req, res) => {
+
   try {
+
     const { appName, userName, userEmail } = req.query;
 
     const connection = await mysql.createConnection(dbConfig);
 
     const [rows] = await connection.execute(
-      `SELECT IFNULL(MAX(VersionNo), 0) + 1 AS NextVersion
-       FROM AppVersionHistory
-       WHERE AppName = ?`,
+      `
+      SELECT IFNULL(MAX(VersionNo),0)+1 AS NextVersion
+      FROM AppVersionHistory
+      WHERE AppName = ?
+      `,
       [appName]
     );
 
     const nextVersion = rows[0].NextVersion;
 
     await connection.execute(
-      `INSERT INTO AppVersionHistory
-       (AppName, VersionNo, UpdatedBy, UpdatedEmail)
-       VALUES (?, ?, ?, ?)`,
+      `
+      INSERT INTO AppVersionHistory
+      (AppName, VersionNo, UpdatedBy, UpdatedEmail)
+      VALUES (?, ?, ?, ?)
+      `,
       [appName, nextVersion, userName, userEmail]
     );
 
@@ -112,26 +169,33 @@ app.get("/save-version", async (req, res) => {
     });
 
   } catch (error) {
+
     res.status(500).json({
       success: false,
       error: error.message
     });
+
   }
+
 });
 
-// Get latest version
+// Latest version
 app.get("/latest-version", async (req, res) => {
+
   try {
+
     const { appName } = req.query;
 
     const connection = await mysql.createConnection(dbConfig);
 
     const [rows] = await connection.execute(
-      `SELECT *
-       FROM AppVersionHistory
-       WHERE AppName = ?
-       ORDER BY Id DESC
-       LIMIT 1`,
+      `
+      SELECT *
+      FROM AppVersionHistory
+      WHERE AppName = ?
+      ORDER BY Id DESC
+      LIMIT 1
+      `,
       [appName]
     );
 
@@ -140,38 +204,46 @@ app.get("/latest-version", async (req, res) => {
     res.json(rows[0] || {});
 
   } catch (error) {
+
     res.status(500).json({
       success: false,
       error: error.message
     });
+
   }
+
 });
 
-// Get all version records
+// All versions
 app.get("/all-versions", async (req, res) => {
+
   try {
+
     const connection = await mysql.createConnection(dbConfig);
 
-    const [rows] = await connection.execute(
-      `SELECT *
-       FROM AppVersionHistory
-       ORDER BY Id DESC`
-    );
+    const [rows] = await connection.execute(`
+      SELECT *
+      FROM AppVersionHistory
+      ORDER BY Id DESC
+    `);
 
     await connection.end();
 
     res.json(rows);
 
   } catch (error) {
+
     res.status(500).json({
       success: false,
       error: error.message
     });
+
   }
+
 });
 
-const port = Number(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
 
-app.listen(port, () => {
-  console.log(`Server running: http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log("Railway Backend Running");
 });
