@@ -1,0 +1,23 @@
+{
+  "name": "learn_new",
+  "version": "1.0.0",
+  "description": "",
+  "main": "serverversion.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node serverversion.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.7",
+    "express": "^5.2.1",
+    "mysql2": "^3.22.3"
+  }
+}
