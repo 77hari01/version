@@ -7,14 +7,43 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const mysqlUrl = process.env.MYSQL_URL;
+const dbConfig = {
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
+};
 
-// HEALTH CHECK
+// HOME
+app.get("/", (req, res) => {
+  res.send(`
+    <h2>IMS Version API Running</h2>
+
+    <p>
+      <a href="/health">Health Check</a>
+    </p>
+
+    <p>
+      <a href="/all-versions">All Versions</a>
+    </p>
+  `);
+});
+
+// HEALTH
 app.get("/health", (req, res) => {
+
   res.json({
     success: true,
-    mysqlUrl: mysqlUrl ? "OK" : "MISSING"
+    dbConfig: {
+      host: process.env.DB_HOST ? "OK" : "MISSING",
+      port: process.env.DB_PORT || "MISSING",
+      user: process.env.DB_USER ? "OK" : "MISSING",
+      password: process.env.DB_PASSWORD ? "OK" : "MISSING",
+      database: process.env.DB_NAME ? "OK" : "MISSING"
+    }
   });
+
 });
 
 // SAVE VERSION
@@ -28,9 +57,9 @@ app.get("/save-version", async (req, res) => {
     const userName = req.query.userName || "Unknown";
     const userEmail = req.query.userEmail || "unknown@gmail.com";
 
-    connection = await mysql.createConnection(mysqlUrl);
+    connection = await mysql.createConnection(dbConfig);
 
-    // CREATE TABLE IF NOT EXISTS
+    // CREATE TABLE
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS AppVersionHistory (
         Id INT AUTO_INCREMENT PRIMARY KEY,
@@ -42,7 +71,7 @@ app.get("/save-version", async (req, res) => {
       )
     `);
 
-    // GET NEXT VERSION
+    // NEXT VERSION
     const [rows] = await connection.execute(
       `
       SELECT IFNULL(MAX(VersionNo),0)+1 AS NextVersion
@@ -54,7 +83,7 @@ app.get("/save-version", async (req, res) => {
 
     const nextVersion = rows[0].NextVersion;
 
-    // INSERT RECORD
+    // INSERT
     await connection.execute(
       `
       INSERT INTO AppVersionHistory
@@ -87,14 +116,14 @@ app.get("/save-version", async (req, res) => {
 
 });
 
-// GET ALL VERSIONS
+// ALL VERSIONS
 app.get("/all-versions", async (req, res) => {
 
   let connection;
 
   try {
 
-    connection = await mysql.createConnection(mysqlUrl);
+    connection = await mysql.createConnection(dbConfig);
 
     const [rows] = await connection.execute(`
       SELECT *
@@ -121,7 +150,7 @@ app.get("/all-versions", async (req, res) => {
 
 });
 
-// GET LATEST VERSION
+// LATEST VERSION
 app.get("/latest-version", async (req, res) => {
 
   let connection;
@@ -130,7 +159,7 @@ app.get("/latest-version", async (req, res) => {
 
     const appName = req.query.appName || "IMS";
 
-    connection = await mysql.createConnection(mysqlUrl);
+    connection = await mysql.createConnection(dbConfig);
 
     const [rows] = await connection.execute(
       `
@@ -162,25 +191,8 @@ app.get("/latest-version", async (req, res) => {
 
 });
 
-// HOME PAGE
-app.get("/", (req, res) => {
-
-  res.send(`
-    <h2>IMS Version API Running</h2>
-
-    <p>
-      <a href="/health">Health</a>
-    </p>
-
-    <p>
-      <a href="/all-versions">All Versions</a>
-    </p>
-  `);
-
-});
-
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server running");
+  console.log("IMS Version API Running");
 });
