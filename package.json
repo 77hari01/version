@@ -1,13 +1,10 @@
 {
-  "name": "ims-version-api",
-  "version": "1.0.0",
-  "main": "serverversion.js",
   "scripts": {
-    "start": "node serverversion.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "mysql2": "^3.11.5"
+    "cors": "latest",
+    "express": "latest",
+    "pg": "latest"
   }
 }
